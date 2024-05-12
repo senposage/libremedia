@@ -8,11 +8,9 @@ function setBgImg(url) {
 		newbg = "";
 	}
 
-	if (document.body.style.backgroundImage !== newbg) {
-		//console.log("Setting background " + url + " using " + newbg + " to replace " + document.body.style.backgroundImage);
-		document.body.style.backgroundImage = newbg;
-		bgImg = url;
-	}
+	//console.log("Setting background " + url + " using " + newbg + " to replace " + document.body.style.backgroundImage);
+	document.body.style.backgroundImage = newbg;
+	bgImg = url;
 }
 
 function setBgStream(stream) {

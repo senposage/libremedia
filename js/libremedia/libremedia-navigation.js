@@ -56,6 +56,7 @@ function navigoResolve() {
 		.on((match) => {
 			//console.log("Nothing to do!");
 			render(match, "");
+			setBgImg("https://files.joshuadoes.com/randombackground_redirect.php");
 		})
 		.resolve();
 }

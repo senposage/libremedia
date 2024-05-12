@@ -20,11 +20,20 @@ type Object struct {
 	Expanded  bool             `json:"expanded,omitempty"`  //Whether or not this object has been expanded internally
 }
 
+var (
+	expandQueue map[string]*Object //Holds the active expanding queue to check for dead objects
+)
+
+func init() {
+	expandQueue = make(map[string]*Object)
+}
+
 // JSON returns this object as serialized JSON
 func (obj *Object) JSON() ([]byte, error) {
 	return json.Marshal(obj)
 }
 
+// SearchResults returns this object as *ObjectSearchResults
 func (obj *Object) SearchResults() *ObjectSearchResults {
 	if obj.Object == nil {
 		return nil
@@ -41,6 +50,7 @@ func (obj *Object) SearchResults() *ObjectSearchResults {
 	return nil
 }
 
+// Creator returns this object as *ObjectCreator
 func (obj *Object) Creator() *ObjectCreator {
 	if obj.Object == nil {
 		return nil
@@ -57,6 +67,7 @@ func (obj *Object) Creator() *ObjectCreator {
 	return nil
 }
 
+// Album returns this object as *ObjectAlbum
 func (obj *Object) Album() *ObjectAlbum {
 	if obj.Object == nil {
 		return nil
@@ -73,6 +84,7 @@ func (obj *Object) Album() *ObjectAlbum {
 	return nil
 }
 
+// Stream returns this object as *ObjectStream
 func (obj *Object) Stream() *ObjectStream {
 	if obj.Object == nil {
 		return nil
@@ -138,28 +150,28 @@ func (obj *Object) Sync() {
 }
 
 // Expand fills in all top-level object arrays with completed objects
-func (src *Object) Expand() {
-	if src.URI == "" {
+func (obj *Object) Expand() {
+	if obj.URI == "" {
 		return
 	}
 	//Check if object is being expanded right now
-	if src.Expanding {
-		//Sleep and try again
+	if _, exists := expandQueue[obj.URI]; exists {
 		return
 	}
-	src.Expanding = true
-	src.Expanded = false
-	src.Sync()
-	Trace.Println("Expanding " + src.URI)
-	switch src.Type {
+	obj.Expanding = true
+	obj.Expanded = false
+	obj.Sync()
+	expandQueue[obj.URI] = obj
+	Trace.Println("Expanding " + obj.URI)
+	switch obj.Type {
 	case "search":
-		if search := src.SearchResults(); search != nil {
+		if search := obj.SearchResults(); search != nil {
 			syncSearch := func() {
 				searchJSON, err := json.Marshal(search)
 				if err == nil {
-					src.Object = &json.RawMessage{}
-					src.Object.UnmarshalJSON(searchJSON)
-					src.Sync()
+					obj.Object = &json.RawMessage{}
+					obj.Object.UnmarshalJSON(searchJSON)
+					obj.Sync()
 				}
 			}
 			for i := 0; i < len(search.Streams); i++ {
@@ -167,126 +179,126 @@ func (src *Object) Expand() {
 					continue
 				}
 				search.Streams[i] = GetObject(search.Streams[i].URI)
-				syncSearch()
 			}
+			syncSearch()
 			for i := 0; i < len(search.Creators); i++ {
 				if search.Creators[i].URI == "" {
 					continue
 				}
 				search.Creators[i] = GetObject(search.Creators[i].URI)
-				syncSearch()
 			}
+			syncSearch()
 			for i := 0; i < len(search.Albums); i++ {
 				if search.Albums[i].URI == "" {
 					continue
 				}
 				search.Albums[i] = GetObject(search.Albums[i].URI)
-				syncSearch()
 			}
+			syncSearch()
 		}
 	case "artist", "creator", "user", "channel", "chan", "streamer":
-		if creator := src.Creator(); creator != nil {
+		if creator := obj.Creator(); creator != nil {
 			syncCreator := func() {
 				creatorJSON, err := json.Marshal(creator)
 				if err == nil {
-					src.Object = &json.RawMessage{}
-					src.Object.UnmarshalJSON(creatorJSON)
-					src.Sync()
+					obj.Object = &json.RawMessage{}
+					obj.Object.UnmarshalJSON(creatorJSON)
+					obj.Sync()
 				}
 			}
-			for i := 0; i < len(creator.TopStreams); i++ {
+			/*for i := 0; i < len(creator.TopStreams); i++ {
 				if creator.TopStreams[i].URI == "" {
 					continue
 				}
 				creator.TopStreams[i] = GetObject(creator.TopStreams[i].URI)
-				syncCreator()
 			}
+			syncCreator()
 			for i := 0; i < len(creator.Albums); i++ {
 				if creator.Albums[i].URI == "" {
 					continue
 				}
 				creator.Albums[i] = GetObject(creator.Albums[i].URI)
-				syncCreator()
 			}
+			syncCreator()
 			for i := 0; i < len(creator.Appearances); i++ {
 				if creator.Appearances[i].URI == "" {
 					continue
 				}
 				creator.Appearances[i] = GetObject(creator.Appearances[i].URI)
-				syncCreator()
 			}
+			syncCreator()
 			for i := 0; i < len(creator.Singles); i++ {
 				if creator.Singles[i].URI == "" {
 					continue
 				}
 				creator.Singles[i] = GetObject(creator.Singles[i].URI)
-				syncCreator()
 			}
+			syncCreator()
 			for i := 0; i < len(creator.Related); i++ {
 				if creator.Related[i].URI == "" {
 					continue
 				}
 				creator.Related[i] = GetObject(creator.Related[i].URI)
-				syncCreator()
-			}
+			}*/
+			syncCreator()
 		}
 	case "album":
-		if album := src.Album(); album != nil {
+		if album := obj.Album(); album != nil {
 			syncAlbum := func() {
 				albumJSON, err := json.Marshal(album)
 				if err == nil {
-					src.Object = &json.RawMessage{}
-					src.Object.UnmarshalJSON(albumJSON)
-					src.Sync()
+					obj.Object = &json.RawMessage{}
+					obj.Object.UnmarshalJSON(albumJSON)
+					obj.Sync()
 				}
 			}
-			for i := 0; i < len(album.Creators); i++ {
+			/*for i := 0; i < len(album.Creators); i++ {
 				if album.Creators[i].URI == "" {
 					continue
 				}
 				album.Creators[i] = GetObject(album.Creators[i].URI)
 				syncAlbum()
-			}
+			}*/
 			for i := 0; i < len(album.Discs); i++ {
 				for j := 0; j < len(album.Discs[i].Streams); j++ {
 					if album.Discs[i].Streams[j].URI == "" {
 						continue
 					}
 					album.Discs[i].Streams[j] = GetObject(album.Discs[i].Streams[j].URI)
-					syncAlbum()
 				}
 			}
+			syncAlbum()
 		}
 	case "track", "song", "video", "audio", "stream":
-		if stream := src.Stream(); stream != nil {
+		if stream := obj.Stream(); stream != nil {
 			syncStream := func() {
 				streamJSON, err := json.Marshal(stream)
 				if err == nil {
-					src.Object = &json.RawMessage{}
-					src.Object.UnmarshalJSON(streamJSON)
-					src.Sync()
+					obj.Object = &json.RawMessage{}
+					obj.Object.UnmarshalJSON(streamJSON)
+					obj.Sync()
 				}
 			}
 			stream.Album = GetObject(stream.Album.URI)
-			syncStream()
-			for i := 0; i < len(stream.Creators); i++ {
+			/*for i := 0; i < len(stream.Creators); i++ {
 				if stream.Creators[i].URI == "" {
 					continue
 				}
 				stream.Creators[i] = GetObject(stream.Creators[i].URI)
 				syncStream()
-			}
+			}*/
+			syncStream()
 		}
 	}
-	if src.Object != nil {
-		src.Expanding = false
-		src.Expanded = true
-		Trace.Println("Finished expanding " + src.URI)
+	obj.Expanding = false
+	if obj.Object != nil {
+		obj.Expanded = true
+		Trace.Println("Finished expanding " + obj.URI)
 	} else {
-		src.Expanding = false
-		Trace.Println("Failed to expand " + src.URI)
+		Trace.Println("Failed to expand " + obj.URI)
 	}
-	src.Sync()
+	obj.Sync()
+	delete(expandQueue, obj.URI)
 }
 
 // GetObjectCached returns a new object from the cache that links to a given URI
@@ -344,9 +356,9 @@ func GetObjectCached(uri string) (obj *Object) {
 // NewObjError returns an error object
 func NewObjError(msg string) (obj *Object) {
 	obj = &Object{
-		Type: "error",
+		Type:     "error",
 		Provider: "libremedia",
-		Object: &json.RawMessage{},
+		Object:   &json.RawMessage{},
 	}
 	errJSON, err := json.Marshal(&exporterr{Error: msg})
 	if err == nil {

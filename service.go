@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	//TODO: Order handler priority via configuration
 	handlers = map[string]Handler{
 		"tidal":   &TidalClient{},
 		"spotify": &SpotifyClient{},
@@ -14,6 +15,7 @@ var (
 	providers = make([]string, 0)
 )
 
+// Handler is an interface to satisfy a libremedia service handler (a media or metadata provider, respond to something)
 type Handler interface {
 	Provider() string                             //Used for service identification
 	SetService(*Service)                          //Provides the handler access to the libremedia service
@@ -28,6 +30,7 @@ type Handler interface {
 	ReplaceURI(text string) string                     //Replaces all instances of a URI with a libremedia-acceptable URI, for dynamic hyperlinking
 }
 
+// HandlerConfig defines a handler's login credentials and/or active status
 type HandlerConfig struct {
 	Active     bool   `json:"active"`
 	Username   string `json:"username"`
@@ -36,6 +39,7 @@ type HandlerConfig struct {
 	BlobPath   string `json:"blobPath"`
 }
 
+// Service hosts a libremedia service instance's sessions and configuration
 type Service struct {
 	AccessKeys []string                  `json:"accessKeys"`
 	BaseURL    string                    `json:"baseURL"`
@@ -45,6 +49,7 @@ type Service struct {
 	Grants map[string]*ServiceUser `json:"-"`
 }
 
+// Login logs into all of the active providers, blocking execution if any require action
 func (s *Service) Login() error {
 	if s.BaseURL[len(s.BaseURL)-1] != '/' {
 		s.BaseURL += "/"
@@ -54,14 +59,14 @@ func (s *Service) Login() error {
 			if config.Active {
 				newHandler, err := handler.Authenticate(config)
 				if err != nil {
-					Error.Println("Failed to authenticate " + provider + ": ", err)
+					Error.Println("Failed to authenticate "+provider+": ", err)
 					return err
 				}
 				newHandler.SetService(s)
 				handlers[provider] = newHandler
 				providers = append(providers, provider)
 			} else {
-				Trace.Println("Skipping authenticating " + provider)
+				Trace.Println("Skipping authenticating inactive provider " + provider)
 				delete(handlers, provider)
 			}
 		}
@@ -69,6 +74,7 @@ func (s *Service) Login() error {
 	return nil
 }
 
+// Auth checks the authentication key
 func (s *Service) Auth(accessKey string) (*ServiceUser, error) {
 	allow := false
 	for i := 0; i < len(s.AccessKeys); i++ {
@@ -83,6 +89,7 @@ func (s *Service) Auth(accessKey string) (*ServiceUser, error) {
 	return nil, nil
 }
 
+// Stream transports a media stream for the specified format
 func (s *Service) Stream(w http.ResponseWriter, r *http.Request, stream *ObjectStream, format int) error {
 	if stream == nil {
 		return fmt.Errorf("stream is nil")
@@ -90,23 +97,25 @@ func (s *Service) Stream(w http.ResponseWriter, r *http.Request, stream *ObjectS
 	if stream.Provider == "" {
 		return fmt.Errorf("provider not specified")
 	}
-/*	if stream.Formats == nil || len(stream.Formats) <= format {
-		objStream := GetObject(stream.URI, false)
-		if objStream != nil {
-			stream = objStream.Stream()
-			if stream.Formats == nil || len(stream.Formats) <= format {
-				return fmt.Errorf("format not available to stream")
+	/*	if stream.Formats == nil || len(stream.Formats) <= format {
+			objStream := GetObject(stream.URI, false)
+			if objStream != nil {
+				stream = objStream.Stream()
+				if stream.Formats == nil || len(stream.Formats) <= format {
+					return fmt.Errorf("format not available to stream")
+				}
+			} else {
+				return fmt.Errorf("stream not available right now")
 			}
-		} else {
-			return fmt.Errorf("stream not available right now")
 		}
-	}
-*/	if handler, exists := handlers[stream.Provider]; exists {
+	*/
+	if handler, exists := handlers[stream.Provider]; exists {
 		return handler.StreamFormat(w, r, stream, format)
 	}
 	return fmt.Errorf("no handler for provider " + stream.Provider)
 }
 
+// Download transports a media download for the specified format
 func (s *Service) Download(w http.ResponseWriter, r *http.Request, stream *ObjectStream, format int) error {
 	if stream.Provider == "" {
 		return fmt.Errorf("provider not specified")
@@ -118,6 +127,7 @@ func (s *Service) Download(w http.ResponseWriter, r *http.Request, stream *Objec
 	return fmt.Errorf("no handler for provider " + stream.Provider)
 }
 
+// ServiceUser hosts a user's live session
 type ServiceUser struct {
-	Expires time.Time
+	LastPing time.Time
 }

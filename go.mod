@@ -12,17 +12,24 @@ require (
 )
 
 require (
+	github.com/CAFxX/httpcompression v0.0.8 // indirect
+	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
+	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/badfortrains/mdns v0.0.0-20160325001438-447166384f51 // indirect
 	github.com/brynbellomy/klog v0.0.0-20200414031930-87fbf2e555ae // indirect
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
 	github.com/eolso/threadsafe v0.0.0-20230304165831-d28da4e4d0d3 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
+	github.com/go-http-utils/etag v0.0.0-20161124023236-513ea8f21eb1 // indirect
+	github.com/go-http-utils/fresh v0.0.0-20161124030543-7231e26a4b27 // indirect
+	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gosimple/slug v1.13.1 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/jfbus/httprs v1.0.1 // indirect
+	github.com/klauspost/compress v1.14.1 // indirect
 	github.com/miekg/dns v1.1.55 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect

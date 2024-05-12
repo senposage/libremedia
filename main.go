@@ -21,7 +21,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CAFxX/httpcompression"
 	"github.com/eolso/librespot-golang/librespot/utils"
+	"github.com/go-http-utils/etag"
 )
 
 type exporterr struct {
@@ -96,17 +98,20 @@ func main() {
 	}
 
 	//libremedia API v1
-	http.HandleFunc("/v1/", v1Handler)
-	http.HandleFunc("/v1/stream/", v1StreamHandler)
-	http.HandleFunc("/v1/download/", v1DownloadHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/", v1Handler)
+	mux.HandleFunc("/v1/stream/", v1StreamHandler)
+	mux.HandleFunc("/v1/download/", v1DownloadHandler)
 
 	//Built-in utilities that may not be recreatable in some circumstances
-	http.HandleFunc("/util/gid2id/", gid2id)
+	mux.HandleFunc("/util/gid2id/", gid2id)
 
 	//Web interfaces
-	http.HandleFunc("/", webHandler)
+	mux.HandleFunc("/", webHandler)
 
-	Warning.Fatal(http.ListenAndServe(service.HostAddr, nil))
+	//Compression
+	compress, _ := httpcompression.DefaultAdapter()
+	Warning.Fatal(http.ListenAndServe(service.HostAddr, etag.Handler(compress(mux), false)))
 }
 
 func v1Handler(w http.ResponseWriter, r *http.Request) {
@@ -116,13 +121,15 @@ func v1Handler(w http.ResponseWriter, r *http.Request) {
 		jsonWriteErrorf(w, 404, "no matching object")
 		return
 	}
-	if !obj.Expanded && !obj.Expanding {
-		switch obj.Type {
+	if !obj.Expanded {
+		/*switch obj.Type {
 		case "album", "creator", "stream":
 			obj.Expand()
 		default:
 			go obj.Expand()
-		}
+		}*/
+		go obj.Expand()
+		time.Sleep(time.Second * 1)
 	}
 	jsonWrite(w, obj)
 }

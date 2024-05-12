@@ -69,6 +69,7 @@ func (terr *TidalError) Error() error {
 // TidalClient holds a Tidal client
 type TidalClient struct {
 	sync.Mutex
+	Ratelimiter int `json:"ratelimiter"` //Increased by one each time the ratelimit is encountered, spreads out requests
 
 	ClientID     string `json:"clientID"`
 	ClientSecret string `json:"clientSecret"`
@@ -163,8 +164,16 @@ func (t *TidalClient) GetJSON(endpoint string, query url.Values, target interfac
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("%s: %s", resp.Status, string(body))
 	}
-	if target != nil {
-		return json.Unmarshal(body, target)
+	switch resp.StatusCode {
+	case 200: //OK
+		if target != nil {
+			return json.Unmarshal(body, target)
+		}
+	case 429: //Too Many Requests
+		t.Ratelimiter++
+		fmt.Printf("Sleeping for %d seconds\n", t.Ratelimiter)
+		time.Sleep(time.Duration(t.Ratelimiter) * time.Second)
+		return t.GetJSON(endpoint, query, target)
 	}
 	return nil
 }
